@@ -8,7 +8,7 @@ North and Central Coast Humpback Whale Catalog (as of 2025) as well as the dorsa
 acquired and matched by NCCS for their dorsal catalog, to show all of the features 
 available for an individual for identification. 
 
-link here: 
+link here: [https://hannahbarrow.github.io/HW_master_catalog/](https://hannahbarrow.github.io/HW_master_catalog/)
 
 The original version of this catalog that I made is [here](https://hannahbarr0w.shinyapps.io/docs/). 
 It is a shiny app, so it is prettier but it is much slower because of how large it is. 
