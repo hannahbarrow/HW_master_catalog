@@ -1,0 +1,171 @@
+---
+title: "Big Fat Humpback Whale Catalog"
+author: "by Hannah Barrow - 2026"
+output: 
+  html_document:
+    self_contained: false
+  theme: 
+      dark: "#2d5e80"
+      secondary: "#2d5e80"
+      success: "#2d5e80"
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.container-fluid {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+.IDs-nav a {
+  display: block;
+  padding: 6px 10px;
+  margin-bottom: 3px;
+  text-decoration: none;
+  color: #2d5e80;
+  border-radius: 5px;
+}
+.IDs-nav a:hover {
+  background-color: #e8f0f5;
+}
+.IDs-nav {
+  position: fixed;
+  top: 150px;
+  bottom: 0;
+  width: 200px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.image-scroll {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 15px;
+  width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  padding: 10px;
+}
+.image-scroll img {
+  height: 200px !important;
+  width: 500px !important;
+  max-width: none !important;
+  object-fit: contain;
+  flex: 0 0 auto !important;
+}</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE, echo=FALSE, message=FALSE)
+library(bslib)
+library(shiny)
+library(dplyr)
+library(purrr)
+library(stringr)
+```
+
+```{r info, include=FALSE}
+lf <- dir(c("features"), recursive = TRUE)
+#lf <- lf[! lf %in% c('SDG4.png', 'SDG5.png','test_image.jpg')]
+
+mr <- data.frame(filepath = lf)
+mr$type <- lapply(strsplit(lf, '/'),'[[',1) %>% unlist # FL or dorsal
+mr$names <- lapply(strsplit(lf, '/'),'[[',2) %>% unlist # FL image or dorsal ID
+
+side <- c()
+for(i in 1:length(lf)) {
+  lfi <- lf[i]
+  spliti <- strsplit(lfi,'/')
+  #print((spliti[[1]]))
+  if(length(spliti[[1]])>2){
+    side[i] <- lapply(spliti,'[[',3)
+  }else{
+    side[i] <- NA
+  }
+}
+mr$side <- side %>% unlist # left or right dorsal
+
+dorsal_img <- c()
+for(i in 1:length(lf)) {
+  lfi <- lf[i]
+  spliti <- strsplit(lfi,'/')
+  #print((spliti[[1]]))
+  if(length(spliti[[1]])>3){
+    dorsal_img[i] <- lapply(spliti,'[[',4)
+  }else{
+    dorsal_img[i] <- NA
+  }
+}
+mr$dorsal_img <- dorsal_img %>% unlist # dorsal images
+
+mr <- mr %>% mutate(ID = paste0(substr(mr$names, 1, 7)))
+mr <- mr %>% 
+  arrange(ID)
+
+catalog_key <- read.csv('catalog_key.csv', header = TRUE)
+catalog_key <- catalog_key %>% 
+  select(true.id, local) %>% 
+  mutate(ID = true.id)
+catalog_key <- catalog_key %>% 
+  arrange(true.id)
+
+mr <- mr %>%
+  left_join(catalog_key, by = "ID", relationship = "many-to-many")
+mr <- mr %>% mutate(ID = paste0(ID, "_", local))
+mr <- mr %>% select(-local, -true.id)
+mr$ID <- ifelse(endsWith(mr$ID, "_"), substr(mr$ID, 1, 7), mr$ID)
+mr <- mr %>% 
+  arrange(type, "FLs", "dorsals")
+mr <- mr %>% 
+  arrange(substr(ID, 3, 3), ID)
+
+IDs <- unique(mr$ID)
+```
+
+```{r cards, }
+# setup ------------------------------------------------------------------------
+cards <- lapply(unique(mr$ID), function(id) {
+  
+  IDs <- mr %>%
+    filter(ID == id)
+  
+  images <- lapply(IDs$filepath, function(path) {
+    card_image(
+      src = file.path("features", path),
+      loading = "lazy"
+    )
+  })
+  
+  card(
+    id = paste0("card_", id),
+    card_header(id),
+    div(
+      class = "image-scroll",
+      images
+    )
+  )
+})
+
+# display ----------------------------------------------------------------------
+page_fillable(
+  layout_sidebar(
+    sidebar = sidebar(
+      div(
+        class = "IDs-nav",
+        lapply(unique(mr$ID), function(id) {
+          tags$a(
+            href = paste0("#card_", id),
+            id
+          )
+        })
+      )
+    ),
+    div(
+      style = "display: grid; grid-template-columns: 1fr 1fr; gap: 20px;",
+      cards
+    )
+  )
+)
+```
